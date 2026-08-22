@@ -48,7 +48,7 @@ void main() {
     }
   }
   print('d. Danh sach tang dan: $tangDan');
-  //123123123123123123123123123123123123123
+
   int max = ds[0];
 
   for (int i = 1; i < n; i++) {
