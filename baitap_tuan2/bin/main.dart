@@ -1,6 +1,6 @@
 import 'dart:io';
 
-// import 'package:baitap_tuan2/Phong.dart';
+import '../lib/Phong.dart';
 import '../lib/MonHoc.dart';
 
 // void main(List<String> args) async {
@@ -274,14 +274,14 @@ void main(List<String> args) async {
 
   xuatDanhSach(ds);
 
-  // if (kiemTraSapXepTen(ds))
-  //   print('Danh sách môn học được sắp xếp tăng dần theo tên môn học');
-  // else
-  //   print('Danh sách môn học không được sắp xếp tăng dần theo tên môn học');
+  if (kiemTraSapXepTen(ds))
+    print('Danh sách môn học được sắp xếp tăng dần theo tên môn học');
+  else
+    print('Danh sách môn học không được sắp xếp tăng dần theo tên môn học');
 
-  // sapXepTheoTinChi(ds);
-  // xuatDanhSach(ds);
-  // inMonHocTinChiCaoNhat(ds);
-  // timHoacThemMonHoc(ds);
+  sapXepTheoTinChi(ds);
+  xuatDanhSach(ds);
+  inMonHocTinChiCaoNhat(ds);
+  timHoacThemMonHoc(ds);
   tinhTCTrungBinh(ds);
 }
