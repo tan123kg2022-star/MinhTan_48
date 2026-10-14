@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-import 'package:bai2/models/todo.dart';
-import 'package:bai2/services/file_services.dart';
+import '../models/todo.dart';
+import '../services/file_services.dart';
+import '../services/notification_service.dart';
 
 class ScreenTodo extends StatefulWidget {
   const ScreenTodo({super.key});
@@ -14,23 +14,25 @@ class ScreenTodo extends StatefulWidget {
 class _TodoScreenState extends State<ScreenTodo> {
   final TextEditingController controller = TextEditingController();
   final FileService fileService = FileService();
+  final NotificationService notificationService = NotificationService();
 
   List<Todo> todos = [];
   DateTime? selectedTime;
 
-  // Bảng màu card giống hình minh họa
   final List<Color> colors = [
-    const Color(0xFFFFCDD2), // Đỏ nhạt
-    const Color(0xFFC8E6C9), // Xanh lá nhạt
-    const Color(0xFFBBDEFB), // Xanh dương nhạt
-    const Color(0xFFFFF9C4), // Vàng nhạt
-    const Color(0xFFE1BEE7), // Tím nhạt
+    const Color(0xFFFFCDD2),
+    const Color(0xFFC8E6C9),
+    const Color(0xFFBBDEFB),
+    const Color(0xFFFFF9C4),
+    const Color(0xFFE1BEE7),
   ];
 
   @override
   void initState() {
     super.initState();
     loadData();
+    // Khởi tạo notification service
+    notificationService.init();
   }
 
   void loadData() async {
@@ -41,16 +43,38 @@ class _TodoScreenState extends State<ScreenTodo> {
   void addTodo() async {
     if (controller.text.trim().isEmpty || selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập tên việc và chọn thời gian!'),
-        ),
+        const SnackBar(content: Text('Vui lòng nhập tên việc và chọn thời gian!')),
       );
       return;
     }
 
-    final todo = Todo(title: controller.text.trim(), time: selectedTime!);
+    final todoTitle = controller.text.trim();
+    final todoTime = selectedTime!;
+
+    // 1. Lưu vào danh sách và ghi vào file todo.txt
+    final todo = Todo(title: todoTitle, time: todoTime);
     todos.add(todo);
     await fileService.saveTodos(todos);
+
+    // Tạo ID duy nhất cho thông báo dựa trên thời gian hiện tại
+    final notiId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    // 2. Yêu cầu 1: Hiển thị notification đã thêm lịch cho công việc ngay lập tức
+    await notificationService.showSimpleNotification(
+      id: notiId,
+      title: 'Đã thêm lịch công việc',
+      body: 'Công việc "$todoTitle" đã được lưu và lên lịch nhắc nhở!',
+    );
+
+    // 3. Yêu cầu 2: Thiết lập lịch cho công việc theo thời gian đã chọn
+    if (todoTime.isAfter(DateTime.now())) {
+      await notificationService.scheduleNotificationAtDate(
+        id: notiId + 1,
+        title: 'Nhắc nhở công việc',
+        body: 'Đã đến giờ thực hiện: $todoTitle!',
+        scheduledDate: todoTime,
+      );
+    }
 
     controller.clear();
     selectedTime = null;
@@ -60,9 +84,9 @@ class _TodoScreenState extends State<ScreenTodo> {
   void pickDateTime() async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      firstDate: DateTime(2020),
+      firstDate: DateTime.now(),
       lastDate: DateTime(2100),
-      initialDate: selectedTime ?? DateTime.now(),
+      initialDate: DateTime.now(),
     );
 
     if (pickedDate != null && mounted) {
@@ -106,35 +130,23 @@ class _TodoScreenState extends State<ScreenTodo> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
-            // 1. Ô nhập tên công việc
             TextField(
               controller: controller,
               decoration: InputDecoration(
                 labelText: "Tên công việc",
                 labelStyle: const TextStyle(color: Colors.grey),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(
-                    color: Color(0xFF2196F3),
-                    width: 1.5,
-                  ),
+                  borderSide: const BorderSide(color: Color(0xFF2196F3), width: 1.5),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(
-                    color: Color(0xFF1E88E5),
-                    width: 2,
-                  ),
+                  borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
             ),
             const SizedBox(height: 16),
-
-            // 2. Dòng hiển thị trạng thái và nút Chọn thời gian
             Row(
               children: [
                 Expanded(
@@ -148,31 +160,20 @@ class _TodoScreenState extends State<ScreenTodo> {
                 OutlinedButton(
                   onPressed: pickDateTime,
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(
-                      color: Color(0xFF2196F3),
-                      width: 1.5,
-                    ),
+                    side: const BorderSide(color: Color(0xFF2196F3), width: 1.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
                   child: const Text(
                     "Chọn thời gian",
-                    style: TextStyle(
-                      color: Color(0xFF2196F3),
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(color: Color(0xFF2196F3), fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-
-            // 3. Nút Lưu
             ElevatedButton(
               onPressed: addTodo,
               style: ElevatedButton.styleFrom(
@@ -181,25 +182,16 @@ class _TodoScreenState extends State<ScreenTodo> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 10,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
                 elevation: 1,
               ),
-              child: const Text(
-                "Lưu",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              child: const Text("Lưu", style: TextStyle(fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 20),
-
-            // 4. Danh sách công việc
             Expanded(
               child: ListView.separated(
                 itemCount: todos.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 10),
+                separatorBuilder: (context, index) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   final item = todos[index];
                   final Color bgColor = colors[index % colors.length];
@@ -209,10 +201,7 @@ class _TodoScreenState extends State<ScreenTodo> {
                       color: bgColor,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
